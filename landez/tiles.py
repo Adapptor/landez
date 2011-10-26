@@ -15,7 +15,11 @@ try:
     import mapnik
     has_mapnik = True
 except ImportError:
-    pass
+    try:
+        import mapnik2 as mapnik
+        has_mapnik = True
+    except ImportError:
+        has_mapnik = True
 
 has_pil = False
 try:
