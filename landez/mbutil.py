@@ -162,6 +162,18 @@ def disk_to_mbtiles(directory_path, mbtiles_file):
     logger.debug('tiles inserted.')
     optimize_database(con)
 
+def intermediate_to_mbtiles(storage, mbtiles_file):
+    con = mbtiles_connect(mbtiles_file)
+    cur = con.cursor()
+    optimize_connection(cur)
+    mbtiles_setup(cur)
+    for x, y, z, tile_data in storage.all_tiles():
+        cur.execute("""insert into tiles (zoom_level,
+            tile_column, tile_row, tile_data) values
+            (?, ?, ?, ?);""",
+            (z, x, y, sqlite3.Binary(tile_data)))
+    optimize_database(con)
+
 def mbtiles_to_disk(mbtiles_file, directory_path):
     logger.debug("Exporting MBTiles to disk")
     logger.debug("%s --> %s" % (mbtiles_file, directory_path))

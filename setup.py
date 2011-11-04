@@ -19,6 +19,7 @@ setup(name       = 'landez',
         console_scripts = [
         ]),
     install_requires=[
+        'sqlalchemy==0.7.3'
     ],
     packages     = find_packages(),
     platforms    = ('any',),

@@ -5,8 +5,9 @@ import shutil
 import logging
 import tempfile
 import sqlite3
+import tempfile
 
-from mbutil import disk_to_mbtiles
+from mbutil import intermediate_to_mbtiles
 
 from proj import GoogleProjection
 
@@ -323,6 +324,7 @@ class MBTilesBuilder(TilesManager):
         self.basename, ext = os.path.splitext(os.path.basename(self.filepath))
         self.tmp_dir = os.path.join(self.tmp_dir, self.basename)
         self.tiles_dir = kwargs.get('tiles_dir', self.tmp_dir)
+        self.intermediate_storage = kwargs.get('storage', None)
         # Number of tiles in total
         self.nbtiles = 0
         self._bboxes = []
@@ -363,14 +365,24 @@ class MBTilesBuilder(TilesManager):
 
         # Go through whole list of tiles and gather them in tmp_dir
         self.rendered = 0
-        for (z, x, y) in tileslist:
-            self.prepare_tile((z, x, y))
-        logger.debug("%s tiles were missing." % self.rendered)
+        try:
+            tempdir = tempfile.mkdtemp()
+            filename = os.path.join(tempdir, 'tile.png')
+            for (z, x, y) in tileslist:
+                self.render_tile(filename, z, x, y)
+                self.intermediate_storage.add_tile_filename(filename, x, y, z)
+                os.unlink(filename)
+                # self.prepare_tile((z, x, y))
+            os.rmdir(tempdir)
+            logger.debug("%s tiles were missing." % self.rendered)
 
-        # Package it! 
-        logger.info("Build MBTiles file '%s'." % self.filepath)
-        disk_to_mbtiles(self.tmp_dir, self.filepath)
-        self.clean()
+            # Package it! 
+            logger.info("Build MBTiles file '%s'." % self.filepath)
+            # disk_to_mbtiles(self.tmp_dir, self.filepath)
+            intermediate_to_mbtiles(self.intermediate_storage, self.filepath)
+        finally:
+            self.intermediate_storage.cleanup()
+            self.clean()
 
     def clean(self, full=False):
         """
